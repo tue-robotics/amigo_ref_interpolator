@@ -2,7 +2,7 @@
 #include <amigo_ref_interpolator/interpolator.h>
 #include <amigo_msgs/ref_point.h>
 
-using namespace controller;
+using namespace refgen;
 
 
 RefGenerator::RefGenerator()

@@ -1,7 +1,7 @@
 #include <ros/ros.h>
 #include <amigo_msgs/ref_point.h>
 
-namespace controller {
+namespace refgen {
 	
 	class RefGenerator
 	{
