@@ -14,7 +14,7 @@
 
    <export>
     <cpp cflags="-I${prefix}/include -I${prefix}/include/amigo_ref_interpolator"
-         lflags="-Wl,-rpath,${prefix}/lib -L${prefix}/lib -lref_gen_lib" />
+         lflags="-Wl,-rpath,${prefix}/lib -L${prefix}/lib -linterpolator_lib" />
   </export>
 
 </package>
