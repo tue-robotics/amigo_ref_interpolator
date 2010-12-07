@@ -63,16 +63,16 @@ amigo_msgs::ref_point RefGenerator::generateReference(double x_desired, double m
     //decide whether to move or stand still
     if (vel_mag!=0.0 || stopping){
 	  move = true;
-	  ROS_WARN("case 1");
+	  ///ROS_WARN("case 1");
     }
     else if (delta_x > EPS || stopping){
 	  move = true;
-	  ROS_WARN("case 2");
+	  ///ROS_WARN("case 2");
     }
     else {
 	  still = true;
 	  x = x_desired;
-	  ROS_WARN("case 3");
+	  ///ROS_WARN("case 3");
     }
 
 	
@@ -81,7 +81,7 @@ amigo_msgs::ref_point RefGenerator::generateReference(double x_desired, double m
 	  reset = false;
     }
 
-    ROS_INFO("dec_dist=%f, delta_x=%f,dir=%d, sign=%d",fabs(dec_dist),fabs(delta_x),dir,sign_x);
+    ///ROS_INFO("dec_dist=%f, delta_x=%f,dir=%d, sign=%d",fabs(dec_dist),fabs(delta_x),dir,sign_x);
     
     //move: decide whether to stop, decelerate, constant speed or accelerate
     if (move){
@@ -91,23 +91,23 @@ amigo_msgs::ref_point RefGenerator::generateReference(double x_desired, double m
 			con = false;
 			still = false;
 			dec = true;
-			ROS_ERROR("stopping");
+			///ROS_ERROR("stopping");
        	}
 		else if (fabs(dec_dist) >= fabs(delta_x)){
 			dec = true;
-							  	ROS_INFO("go to dec");
+							  	///ROS_INFO("go to dec");
 		}
 		else if (sign_x * (x_desired - x) < 0 && vel_mag != 0.0){
 			dec = true;
-								ROS_INFO("setpoint behind");
+								///ROS_INFO("setpoint behind");
 		}
 		else if (fabs(dec_dist) < fabs(delta_x) && vel_mag >= max_vel){
 			con = true;
-										  	ROS_INFO("go to con");
+										  	///ROS_INFO("go to con");
 		}
 		else{
 			acc = true;
-										  	ROS_INFO("go to acc");
+										  	///ROS_INFO("go to acc");
 		}
 			
 		
@@ -130,7 +130,7 @@ amigo_msgs::ref_point RefGenerator::generateReference(double x_desired, double m
 			if (vel_mag < (0.5 * max_acc * dt)){
 				vel_mag = 0.0;
 				reset = true;
-				ROS_WARN("reset");
+				///ROS_WARN("reset");
 			}
 				
 		}
@@ -141,17 +141,16 @@ amigo_msgs::ref_point RefGenerator::generateReference(double x_desired, double m
 	
 	//stand still: reset values
 	else if (still){
-	 /// x = x_desired;
 	  vel = 0;
 	  a = 0;
 	  sign_x = 0;
 	  reset = true;
 	  ready = true;
-	  ROS_INFO("still");
+	 /// ROS_INFO("still");
 	  
     }
     else {
-		ROS_ERROR("uncovered!!");
+		///ROS_ERROR("uncovered!!");
 	}
     //populate return values 
     ///v = dir * vel_mag;
@@ -169,4 +168,3 @@ amigo_msgs::ref_point RefGenerator::generateReference(double x_desired, double m
     return return_ref;
    
 }
-
