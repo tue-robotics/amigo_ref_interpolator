@@ -6,7 +6,8 @@ using namespace refgen;
 
 
 RefGenerator::RefGenerator()
-{ x=0.0, x_desired=0.0, EPS=0.0001, dir=1, vel_mag=0.0, decide=false, acc=false,stl=true,con=false, new_cmd=false, time_of_last_cycle_=0.0;
+{ dir =1, reset = true; vel = 0.0; x = 0.0; ready = false;
+
 }
 
 RefGenerator::~RefGenerator()
@@ -23,195 +24,149 @@ int RefGenerator::signum(double a)
     return 1;
 }
 
-void RefGenerator::traj_controller(double x, double x_desired, double max_vel, double max_acc, int stopping){
-    
-	double delta_x = x_desired - x;
-	dir_desired = signum(delta_x);
+void RefGenerator::setRefGen(double x_reset){
 	
-	stop = stopping;
-   
-	//////////// if in steady phase ////////////////
-	if (stl){
-	  if (stop == 1){
-		///ROS_INFO("stopped");
-	  }
-	  else if (fabs(delta_x) > EPS){
-	     acc=true;
-	     stl=false;	
-	     ///ROS_INFO("start moving");
-	  }
+	reset = true;
+	dir = 1;
+	vel = 0.0;
+	x = x_reset;
+	ready = false;
+	
+}
+
+amigo_msgs::ref_point RefGenerator::generateReference(double x_desired, double max_vel, double max_acc,double dt, bool stopping, double eps_tune){
+
+    eps_tune = std::max<double>(std::min<double>(eps_tune,2.0),1.0);
+    double EPS = 0.5 * max_acc*dt;
+
+    amigo_msgs::ref_point return_ref;
+    
+    //initial state
+    bool still = false;
+	bool move = false;
+	bool dec = false;
+	bool con = false;
+	bool acc = false;
+	
+	///double v;
+	double a = 0.0;
+	double vel_mag = fabs(vel);
+	
+	//compute deceleration distance
+    double delta_t1=vel_mag/max_acc; //deceleration segment time
+    double dec_dist = 0.5*max_acc * (delta_t1) * (delta_t1); //deceleration distance
+
+	//determine magnitude and sign of error vector
+	double delta_x = fabs(x_desired - x);
+	int sign_x = signum(vel);
+
+    //decide whether to move or stand still
+    if (vel_mag!=0.0 || stopping){
+	  move = true;
+	  ROS_WARN("case 1");
+    }
+    else if (delta_x > EPS || stopping){
+	  move = true;
+	  ROS_WARN("case 2");
+    }
+    else {
+	  still = true;
+	  x = x_desired;
+	  ROS_WARN("case 3");
+    }
+
+	
+	if (reset){
+	  dir = signum(x_desired - x); 
+	  reset = false;
+    }
+
+    ROS_INFO("dec_dist=%f, delta_x=%f,dir=%d, sign=%d",fabs(dec_dist),fabs(delta_x),dir,sign_x);
+    
+    //move: decide whether to stop, decelerate, constant speed or accelerate
+    if (move){
+		
+		if (stopping){
+			acc = false;
+			con = false;
+			still = false;
+			dec = true;
+			ROS_ERROR("stopping");
+       	}
+		else if (fabs(dec_dist) >= fabs(delta_x)){
+			dec = true;
+							  	ROS_INFO("go to dec");
+		}
+		else if (sign_x * (x_desired - x) < 0 && vel_mag != 0.0){
+			dec = true;
+								ROS_INFO("setpoint behind");
+		}
+		else if (fabs(dec_dist) < fabs(delta_x) && vel_mag >= max_vel){
+			con = true;
+										  	ROS_INFO("go to con");
+		}
+		else{
+			acc = true;
+										  	ROS_INFO("go to acc");
+		}
+			
+		
+		//move: reference value computations	
+		if (acc){
+			vel_mag += max_acc * dt;
+			vel_mag = std::min<double>(vel_mag, max_vel);
+			x+= dir * vel_mag * dt;
+			a = dir * max_acc;
+		}
+		if (con){
+			x+= dir * vel_mag * dt;
+			a = 0;
+		}
+		if (dec){
+			vel_mag -= max_acc * dt;
+			vel_mag = std::max<double>(vel_mag, 0.0);
+			x+= dir * vel_mag * dt;
+			a = - dir * max_acc;
+			if (vel_mag < (0.5 * max_acc * dt)){
+				vel_mag = 0.0;
+				reset = true;
+				ROS_WARN("reset");
+			}
+				
+		}
+		
+	ready = false;
 	
 	}
-	    
-	//////////// if in acceleration phase ////////////////   
-	else if (acc){
-      
-	  //if new desired position is in front of x
-	  if (dir * delta_x >= 0.0){
-	    decide=true;
-      }
-      //if new desired position is behind x  
-      else if (dir * delta_x < 0.0){
-	    acc=false;
-	    dec=true;
-	  }  
-    	
-    }
 	
-	////////// if in constant phase /////////////////
-	
-	else if (con){
-	  //if new desired position is in front of x
-	  if (dir * delta_x >= 0.0){
-	    decide=true;
-      }
-      //if new desired position is behind x  
-      else if (dir * delta_x < 0.0){
-	    con=false;
-	    dec=true;
-	  }  
-	}  
+	//stand still: reset values
+	else if (still){
+	 /// x = x_desired;
+	  vel = 0;
+	  a = 0;
+	  sign_x = 0;
+	  reset = true;
+	  ready = true;
+	  ROS_INFO("still");
 	  
-	////////// if in deceleration phase ///////////////
-
-    else if (dec){
-
-      //if new desired position is in front of x
-	  if (dir * delta_x >= 0.0){
-	    decide=true;
-	    dec=false;
-      }
-      //if new desired position is behind x  
-      else if (dir * delta_x < 0.0){
-	    dec=true;
-	  }  		
     }
+    else {
+		ROS_ERROR("uncovered!!");
+	}
+    //populate return values 
+    ///v = dir * vel_mag;
+    vel = dir * vel_mag;
+    a = (vel - vel_last)/dt;
+    
+    return_ref.pos = x;
+    return_ref.vel = vel;
+    return_ref.acc = a;
+    return_ref.ready = ready;
+    
+    vel_last = vel;
+    
+    //return values
+    return return_ref;
+   
 }
 
-
-amigo_msgs::ref_point RefGenerator::generateReference(double x,double x_desired, double vel, double max_vel, double max_acc,double dt, int stopping){
-
-   amigo_msgs::ref_point return_ref;
-   double v_last = vel;
-   double vel_mag = fabs(vel);
-   double delta_t1=vel_mag/max_acc; //deceleration segment time
-   double delta_x1 = 0.5*max_acc * (delta_t1) * (delta_t1); //deceleration distance
-   double delta_x = x_desired - x;
-   
-   stop = stopping;
-   if (stop ==1){
-	   decide = false;
-	   stl = false;
-	   acc = false;
-	   con = false;
-	   dec = true;
-   }
-      
-    if (decide){
-      //if deceleration required
-      if (fabs(delta_x) <= delta_x1){
-		con=false;
-		acc=false;
-		dec=true;
-      }
-      //if max vel reached
-	  else if (vel_mag >= max_vel){
-        dec=false;
-		acc=false;
-		con=true;
-      }
-      else{
-		dec=false;
-		acc=true;
-		con=false;
-	  }
-    decide=false;
-    }  
-
-    //if in steady state
-    if (stl){
-      if (new_cmd)
-        traj_controller(x, x_desired, max_vel, max_acc, stop);
-    }
-
-    //if in accereleration state
-    if (acc){
-
-      //if deceleration required
-      if (fabs(delta_x) <= delta_x1){
-		//ROS_ERROR("deze");
-		acc=false;
-		dec=true;
-      }
-      //if max vel reached
-	  else if (vel_mag >= max_vel){
-		acc=false;
-		con=true;
-      }
-      else{
-        //compute distance to travel
-        delta_x = x_desired - x;
-      
-        //compute direction
-        dir_desired = signum(delta_x);
-      
-        vel_mag += max_acc *dt; //accelerate
-        vel_mag = std::min<double>(vel_mag,max_vel); //limit velocity magnitude
-
-        //update position
-        x+=dir_desired * vel_mag * dt;
-        dir=dir_desired;
-      }
-    }
-    
-    //if in constant velocity state
-    else if (con){
-      
-      delta_t1=max_vel/max_acc; //deceleration segment time
-      delta_x1 = 0.5*max_acc * (delta_t1) * (delta_t1); 
-      
-      //if deceleration required
-      if (fabs(delta_x) <= fabs(delta_x1)){
-	  dec=true;
-          con=false;
-	  }
-      
-      //compute distance to travel
-      delta_x = x_desired - x;
-            
-      //update position      
-      x += dir * vel_mag * dt;
-     
-    }   
-    
-   //if in deceleration state 
-   else if (dec){
-	      ///ROS_INFO("dec");
-      //if velocity is approximately zero 
-      if (vel_mag <=EPS){
-		dec=false;
-        stl=true;
-        vel_mag = 0.0;
-        traj_controller(x, x_desired, max_vel, max_acc, stop);
-      }
-      
-      vel_mag += -max_acc *dt; //decelerate
-      vel_mag = std::max<double>(vel_mag,0.0); //limit vel_mag
-      
-      //update position
-      x+= dir * vel_mag *dt;
-   }
-   
-   else{} 
-   
-   v = dir * vel_mag;
-   a = std::max<double>(std::min<double>((v - v_last)/dt, max_acc),-max_acc);
-   return_ref.pos = x;
-   return_ref.vel = v;
-   return_ref.acc = a;
-   return_ref.pos_d = x_desired;
-
-   
-   return return_ref;
-   
-}
