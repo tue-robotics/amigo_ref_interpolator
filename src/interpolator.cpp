@@ -155,7 +155,7 @@ amigo_msgs::ref_point RefGenerator::generateReference(double x_desired, double m
     //populate return values 
     ///v = dir * vel_mag;
     vel = dir * vel_mag;
-    a = (vel - vel_last)/dt;
+    ///a = (vel - vel_last)/dt;
     
     return_ref.pos = x;
     return_ref.vel = vel;
