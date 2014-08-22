@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<package>
+  <name>amigo_ref_interpolator</name>
+  <version>0.0.0</version>
+  <description>The amigo_ref_interpolator package</description>
+
+  <maintainer email="n.j.dirkx@student.tue.nl">Nic Dirkx</maintainer>
+
+  <license>BSN</license>
+
+  <buildtool_depend>catkin</buildtool_depend>
+
+  <build_depend>amigo_msgs</build_depend>
+  <build_depend>roscpp</build_depend>
+
+  <run_depend>amigo_msgs</run_depend>
+  <run_depend>roscpp</run_depend>
+
+  <export>
+    <cpp cflags="-I${prefix}/include -I${prefix}/include/amigo_ref_interpolator"
+         lflags="-L${prefix}/lib -Wl,-rpath,${prefix}/lib -linterpolator_lib" />
+  </export>
+</package>
