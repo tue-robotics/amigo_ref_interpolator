@@ -6,7 +6,11 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
 )
 
-catkin_package()
+catkin_package(
+  INCLUDE_DIRS include
+  LIBRARIES interpolator_lib
+  CATKIN_DEPENDS amigo_msgs roscpp
+)
 
 include_directories(
   include
@@ -17,4 +21,6 @@ add_library(interpolator_lib
   src/interpolator.cpp
 )
 
-
+target_link_libraries(interpolator_lib
+  ${catkin_LIBRARIES}
+)
