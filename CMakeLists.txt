@@ -20,7 +20,8 @@ include_directories(
 add_library(interpolator_lib
   src/interpolator.cpp
 )
-
 target_link_libraries(interpolator_lib
   ${catkin_LIBRARIES}
 )
+
+add_dependencies(interpolator_lib ${catkin_EXPORTED_TARGETS})
