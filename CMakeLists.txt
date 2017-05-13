@@ -9,7 +9,7 @@ find_package(catkin REQUIRED COMPONENTS
 catkin_package(
   INCLUDE_DIRS include
   LIBRARIES interpolator_lib
-#  CATKIN_DEPENDS amigo_msgs
+  CATKIN_DEPENDS amigo_msgs
 )
 
 include_directories(
